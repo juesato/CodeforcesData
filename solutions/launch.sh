@@ -1,5 +1,5 @@
-for i in {1..20}
+for i in {21..40}
 do
-    python get_solutions.py $i 20 &
+    python get_solutions.py $i 20 21 &
 done
 wait

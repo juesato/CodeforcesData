@@ -7,7 +7,8 @@ import shutil
 
 start_time = time.time()
 TOT_JOBS = None
-WAIT_TIME = 0.3 # Everyone has to wait 0.3s between requests
+FIRST_JOB_NO = None
+WAIT_TIME = 0.1 # Everyone has to wait 0.3s between requests
 LONG_WAIT_TIME = 1.0
 
 MAX_SUBS = 1000000
@@ -40,8 +41,8 @@ def wait_until_my_turn(job_no, wait_time=WAIT_TIME):
         base = unix_time_int / CYCLE_SECS * CYCLE_SECS
 
         # Everyone owns a 0.3s window, during which you have 0.1s to make your request
-        my_begin = base + wait_time * (0.5 + job_no) - 0.05
-        my_end = base + wait_time * (0.5 + job_no) + 0.05
+        my_begin = base + wait_time * (0.5 + (job_no - FIRST_JOB_NO)) - wait_time / 4
+        my_end = base + wait_time * (0.5 + (job_no - FIRST_JOB_NO)) + wait_time / 4
         if my_begin < unix_time < my_end:
             return
         time.sleep(0.01)
@@ -166,6 +167,7 @@ def main(job_no):
 if __name__ == '__main__':
     job_no = int(sys.argv[1])
     TOT_JOBS = int(sys.argv[2])
+    FIRST_JOB_NO = int(sys.argv[3])
     # Since I just keep incrementing the file count, the only reasonable option is
     # every run should be fresh
     if os.path.exists('tmp/' + str(job_no)):
