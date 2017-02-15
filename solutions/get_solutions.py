@@ -158,6 +158,9 @@ def main(job_no):
                 print ("Hm something went wrong", e)
                 pass
 
+            global start_time
+            start_time = time.time()
+
     log_file.close()
 
 if __name__ == '__main__':
