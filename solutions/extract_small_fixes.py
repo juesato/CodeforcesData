@@ -11,6 +11,7 @@ LOG_FILE = 'log.json'
 
 OUT_PATH_BUGGY = 'buggy.json'
 OUT_PATH_REPAIRED = 'repaired.json'
+OUT_PATH_FIXES = 'fixes.json'
 
 join = os.path.join
 isfile = os.path.isfile
@@ -48,26 +49,56 @@ def lcs(a, b):
             y -= 1
         else:
             assert a[x-1] == b[y-1]
-            result = a[x-1] + result
+            result.append(a[x-1])
             x -= 1
             y -= 1
-    return result
+    return list(reversed(result))
 
-def diff_size(f1, f2):
+def get_diff(a, b, cs):
+    out = []
+    i = 0
+    ia = 0
+    ib = 0
+    while i < len(cs):
+        cur_a, cur_b = [], []
+        while cs[i] != a[ia]:
+            cur_a.append(a[ia])
+            ia += 1
+        while cs[i] != b[ib]:
+            cur_b.append(b[ib])
+            ib += 1
+        if len(cur_a) or len(cur_b):
+            out.append((cur_a, cur_b))
+        i += 1
+        ia += 1
+        ib += 1
+    return out
+
+def diff(f1, f2):
     with open(f1) as f:
-        a1 = f1.readlines()
+        a1 = f.readlines()
 
     with open(f2) as f:
-        a2 = f2.readlines()
+        a2 = f.readlines()
 
-    return max(len(a1), len(a2)) - lcs_len(a1, a2)
+    diff_size = max(len(a1), len(a2)) - len(lcs(a1, a2))
+
+    diff_out = None
+    if diff_size <= MX_DIFF_SIZE:
+        diff_out = get_diff(a1, a2, lcs(a1, a2))
+
+    return diff_size, diff_out
 
 def parse(log_path):
     # Returns a dict which takes [handle][probid] -> [API objs]
     out = defaultdict(list)
     with open(log_path) as f:
         for line in f:
-            obj = json.loads(line)
+            try:
+                obj = json.loads(line)
+            except:
+                print "failed to parse line " + line
+                continue
             con_id = obj['contestId']
             prob_id = obj['problem']['index']
             handle = obj['author']['members'][0]['handle']
@@ -78,6 +109,7 @@ def parse(log_path):
 def main():
     out_f_buggy = open(OUT_PATH_BUGGY, 'w')
     out_f_repaired = open(OUT_PATH_REPAIRED, 'w')
+    out_f_fixes = open(OUT_PATH_FIXES, 'w')
 
     for i in range(MX_JOB_NO):
         job_dir = join(DATA_DIR, str(i))
@@ -95,18 +127,19 @@ def main():
                     corr.append(sub_info)
                 else:
                     incorr.append(sub_info)
-            if len(corr) > 1:
-                # Don't bother for now
+            if len(corr) != 1:
                 continue
             for sub_info in incorr:
-                if diff_size(corr[0]['src_path'], sub_info['src_path']) < MX_DIFF_SIZE:
-                    out_f_buggy.write(json.dumps(desc) + '\n')
+                diff_size, maybe_diff = diff(corr[0]['src_path'], sub_info['src_path'])
+		if diff_size <= MX_DIFF_SIZE:
+                    out_f_buggy.write(json.dumps(sub_info) + '\n')
                     out_f_repaired.write(json.dumps(corr[0]) + '\n')
-
+                    out_f_fixes.write(json.dumps(maybe_diff) + '\n')
+        exit(0)
     out_f_buggy.close()
     out_f_repaired.close()
-
+    out_f_fixes.close()
 
 if __name__ == '__main__':
-    MX_DIFF_SIZE = sys.argv[1]
+    MX_DIFF_SIZE = int(sys.argv[1])
     main()
